@@ -3,9 +3,35 @@
 <html>
 <head>
 <title>FreeGraph - Example - Line chart</title>
-</head>
 
+<script type="text/javascript" src="../js/freegraph.js"></script>
+<link rel="stylesheet" type="text/css" href="default.css" />
+
+</head>
 <body>
+
+<h1>FreeGraph - Example - Line Chart</h1>
+<hr />
+<a href="index.html">Back to index</a>
+<hr />
+<div id="linechart-canvas"></div>
+<script type="text/javascript">
+
+var grapher = newLineChart(document.getElementById("linechart-canvas"));
+
+var blue_series = grapher.newSeries("Blue Line");
+
+blue_series.newPoint([2,2]);
+blue_series.newPoint([4,3]);
+blue_series.newPoint([6,4]);
+blue_series.newPoint([8,5]);
+blue_series.newPoint([10,6]);
+
+grapher.update();
+
+</script>
+<hr />
+
 </body>
 
 </html>
