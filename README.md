@@ -1,6 +1,6 @@
 # FreeGraph
 ## Description
-Draw graphs on a web page with a simple framework with the FreeGraph Javascript library
+Draw graphs and charts on a web page with a simple framework with the FreeGraph Javascript library
 
 ## Status
 FreeGraph is currently under development, new functionality and ideas are welcome.
