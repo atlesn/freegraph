@@ -230,9 +230,15 @@ function FreeGraphPlane(axes, canvas, x1, y1, x2, y2) {
 	this.axes = axes;
 	this.canvas = canvas;
 	
-	this.drawAxes = function () {
+	this.draw = function (series) {
 		var horizontal_axis = null;
 		var vertical_axis = null;
+
+		for (var i = 0; i < series.length; i++) {
+			var series = series[i];
+			// TODO : Should we sort the data?
+			series.fitAxes();
+		}
 
 		for (var i = 0; i < this.axes.length; i++) {
 			var axis = this.axes[i];
@@ -279,7 +285,7 @@ function FreeGraphPlane(axes, canvas, x1, y1, x2, y2) {
 	}
 }
 
-function FreeGraphCanvas(parent, width, height) {
+function FreeGraphCanvas(width, height) {
 	// innerHTML-hack, problems with setting width and height at least in Chrome
 	//var element_text = "<svg width='" + width + "' height='" + height + "' version='1.1'></svg>";
 	//parent.innerHTML = element_text;
@@ -287,12 +293,17 @@ function FreeGraphCanvas(parent, width, height) {
 	this.element.setAttribute("width", width);
 	this.element.setAttribute("height", height);
 	this.element.setAttributeNS("http://www.w3.org/2000/xmlns/", "xmlns:xlink", "http://www.w3.org/1999/xlink");
-	parent.appendChild(this.element);
 	
 	// TODO : check real size of SVG
 	this.width = width;
 	this.height = height;
 
+	this.clear = function() {
+		while (this.element.childNodes.length > 0) {
+			this.element.removeChild(this.element.childNodes[0]);
+		}
+	}
+	
 	this.getElement = function() {
 		return this.element;
 	}
@@ -509,7 +520,7 @@ function FreeGraphBase(parent, width, height, axes) {
 		this.axes.push(axes[i]);
 	}
 
-	this.canvas = new FreeGraphCanvas(parent, width, height);
+	this.canvas = new FreeGraphCanvas(width, height);
 	this.parent.appendChild(this.canvas.getElement());
 
 	this.series = new Array();
@@ -522,12 +533,8 @@ function FreeGraphBase(parent, width, height, axes) {
 	}
 
 	this.update = function() {
-		for (var i = 0; i < this.series.length; i++) {
-			var series = this.series[i];
-			// TODO : Should we sort the data?
-			series.fitAxes();
-		}
-		this.plane.drawAxes();
+		this.canvas.clear();
+		this.plane.draw(this.series);
 	}
 }
 
