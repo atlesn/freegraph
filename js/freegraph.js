@@ -47,6 +47,17 @@ function FreeGraphAxis(name, direction) {
 
 	this.direction = direction;
 
+	this.getAddressDistance = function(address) {
+		if (this.range == undefined) {
+			throw "getAddressPosition called before fitAddresses";
+		}
+		if (this.abstract_line == undefined) {
+			throw "getAddressPosition called before setAbstractLine";
+		}
+
+		return this.abstrace_line.getDistance(this.range / address.getInteger());
+	}
+	
 	this.reset = function() {
 		this.min_address = null;
 		this.max_address = null;
@@ -98,6 +109,13 @@ function FreeGraphAxis(name, direction) {
 		return ret;
 	}
 
+	this.getAbstract1DVector = function(value) {
+		var distance = value - this.min_address.getInteger();
+		var factor = distance / this.range;
+	
+		return this.abstract_line.getAbstract1DVector(factor);
+	}
+	
 	this.getAbstractTicks = function() {
 		return this.abstract_line.generateTicks(this);
 	}
@@ -166,6 +184,17 @@ function FreeGraphPoint(addresses) {
 	this.getAddress = function(index) {
 		return addresses[index];
 	}
+	
+	this.getLabel = function() {
+		var label = "";
+		for (var i = 0; i < this.addresses.length; i++) {
+			if (i > 0) {
+				label = label + ",";
+			}
+			label = label + this.addresses[i].getInteger();
+		}
+		return label;
+	}
 }
 
 function FreeGraphSeries(name, axes) {
@@ -177,6 +206,9 @@ function FreeGraphSeries(name, axes) {
 		throw "axes not defined for newFreeGraphSeries()";
 	}
 	else if (Array.isArray(axes)) {
+		if (axes.length > 3) {
+			throw "Cannot have more than 3 axes for a series, but " + axes.length + " was given";
+		}
 		for (var i = 0; i < axes.length; i++) {
 			this.axes.push(axes[i]);
 		}
@@ -196,6 +228,59 @@ function FreeGraphSeries(name, axes) {
 			axis.reset();
 			axis.fitAddresses(addresses);
 		}
+	}
+
+	this.draw = function (canvas) {
+		var points = new Array();
+		for (var i = 0; i < this.points.length; i++) {
+			var point = this.points[i];
+
+			var vectors = new Array();
+			for (var j = 0; j < this.axes.length; j++) {
+				var vector = this.axes[j].getAbstract1DVector(point.getAddress(j).getInteger());
+				vectors.push(vector);
+			}
+
+			var x;
+			var y;
+
+			if (vectors.length == 1) {
+				x = vectors[0].x * Math.cos(vectors[0].theta);
+				y = 0;
+			}
+			else if (vectors.length == 2) {
+				x = vectors[0].x;
+				y = vectors[1].x;
+
+				console.log ("x, y: " + x + "," + y);
+
+				var common_theta = vectors[1].theta - vectors[0].theta;
+			
+				console.log ("Theta y: " + vectors[1].theta + " sin theta y " + Math.sin(vectors[1].theta));
+				console.log ("Theta x: " + vectors[0].theta + " cos theta x " + Math.cos(vectors[0].theta));
+
+				x *= Math.cos(vectors[0].theta);
+				y *= Math.sin(vectors[1].theta);
+
+				// TODO : Transform common axis skew (advanced)
+
+				// We just assume axis 0 is horizontal and axis 1 is vertical
+				x += vectors[0].start_x;
+				y += vectors[1].start_y;
+				
+				console.log ("xt, yt: " + x + "," + y);
+				
+			}
+			else {
+				throw "given number of axes not supported (" + vectors.length + ")";
+			}
+
+			console.log ("New point at " + x + "x" + y);
+
+			points.push(new FreeGraphAbstractLabel(x, y, point.getLabel()));
+		}
+		
+		canvas.drawPoints(points);
 	}
 
 	// Add a new point to the series, the number of points must match the number of axes
@@ -235,9 +320,9 @@ function FreeGraphPlane(axes, canvas, x1, y1, x2, y2) {
 		var vertical_axis = null;
 
 		for (var i = 0; i < series.length; i++) {
-			var series = series[i];
+			var series_ = series[i];
 			// TODO : Should we sort the data?
-			series.fitAxes();
+			series_.fitAxes();
 		}
 
 		for (var i = 0; i < this.axes.length; i++) {
@@ -281,7 +366,12 @@ function FreeGraphPlane(axes, canvas, x1, y1, x2, y2) {
 		vertical_axis.draw(this.canvas);
 		horizontal_axis.draw(this.canvas);
 
-		//points = spreadPointsOnLine();
+		// The series should already contain their axes which they get relative
+		// position formation from
+		for (var i = 0; i < series.length; i++) {
+			console.log("Drawing series " + i);
+			series[i].draw (canvas);
+		}
 	}
 }
 
@@ -362,6 +452,42 @@ function FreeGraphCanvas(width, height) {
 		return ret;
 	}
 
+	this.drawPoint = function(label) {
+		var element = document.createElementNS('http://www.w3.org/2000/svg','circle');
+
+		// Reverse Y to fit reverse canvas coordinates
+		element.setAttribute("cx", label.x);
+		element.setAttribute("cy", this.height - label.y);
+		element.setAttribute("r", 4);
+
+		element.innerHTML = "<!-- " + label.label + " -->";
+		
+		this.element.appendChild(element);
+
+		return element;
+	}
+	
+	this.drawPoints = function(points) {
+		var labels = points;
+
+		var ret = new Array();
+		
+		var prev_label = null
+		for (var i = 0; i < labels.length; i++) {
+			ret.push(this.drawPoint(labels[i]));
+
+			if (prev_label != null) {
+				var line = new FreeGraphAbstractLine(prev_label.x, prev_label.y, labels[i].x, labels[i].y);
+				this.drawLine(line);
+				ret.push(line);
+			}
+			
+			prev_label = labels[i];
+		}
+
+		return ret;
+	}
+	
 	this.drawProjectLine = function(line) {
 		var element = document.createElementNS('http://www.w3.org/2000/svg','line');
 
@@ -390,6 +516,13 @@ function FreeGraphAbstractLabel(x, y, label) {
 	this.label = label;
 }
 
+function FreeGraphAbstract1DVector(theta, x, start_x, start_y) {
+	this.theta = theta;
+	this.x = x;
+	this.start_x = start_x;
+	this.start_y = start_y;
+}
+
 /*
  * A line with a start point and an angle with automatic length bounded by the canvas width and height
  */
@@ -398,7 +531,7 @@ function FreeGraphAbstractProjectLine(start_x, start_y, direction, margin_x, mar
 	if (direction != 0 && direction != 1) {
 		throw "direction to FreeGraphAbstractProjectLine must be 1 or 0, " + direction + " was given";
 	}
-
+	
 	var max_x = canvas_width - margin_x;
 	var max_y = canvas_height - margin_y;
 
@@ -434,6 +567,15 @@ function FreeGraphAbstractProjectLine(start_x, start_y, direction, margin_x, mar
 		return ret;
 	}
 
+	this.getAbstract1DVector = function(factor) {
+		var distance_max = Math.sqrt(Math.pow(this.distance_x, 2) + Math.pow(this.distance_y, 2));
+		var theta = Math.acos(this.distance_x / distance_max);
+		
+		console.log("factor: " + factor);
+		
+		return new FreeGraphAbstract1DVector(theta, distance_max*factor, this.start_x, this.start_y);
+	}
+	
 	this.generateTicks = function(axis) {
 		var count = axis.getLabelCount();
 		var transform = this.getLineTransformationFactors(count);
