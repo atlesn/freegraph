@@ -469,7 +469,7 @@ function FreeGraphCanvas(width, height) {
 		// Reverse Y to fit reverse canvas coordinates
 		element.setAttribute("cx", label.x);
 		element.setAttribute("cy", this.height - label.y);
-		element.setAttribute("r", 2);
+		element.setAttribute("r", 3);
 
 		element.innerHTML = "<!-- " + label.label + " -->";
 		
