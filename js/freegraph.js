@@ -19,6 +19,12 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 */
 
+function setAttributeToElements (elements, attribute, value) {
+	for (var i = 0; i < elements.length; i++) {
+		elements[i].setAttribute(attribute, value);
+	}
+}
+	
 function FreeGraphAxis(name, direction) {
 	this.name = name;
 	this.ticks = 10;
@@ -29,6 +35,8 @@ function FreeGraphAxis(name, direction) {
 	this.intersect = undefined;
 	this.ticks_spacing = undefined;
 	this.labels_count = undefined;
+
+	this.abstract_line = undefined;
 	
 	if (direction == undefined) {
 		throw "direction argument not given to FreeGraphAxis constructor";
@@ -67,7 +75,7 @@ function FreeGraphAxis(name, direction) {
 //		alert ("Min/max value for axis " + this.name + " is " + this.min_address.getInteger() + "/" + this.max_address.getInteger());
 	}
 
-	this.getLabelsCount = function() {
+	this.getLabelCount = function() {
 		if (this.labels_count == undefined) {
 			throw "getLabels() must be called prior to getLabelsCount()";
 		}
@@ -90,8 +98,41 @@ function FreeGraphAxis(name, direction) {
 		return ret;
 	}
 
+	this.getAbstractTicks = function() {
+		return this.abstract_line.generateTicks(this);
+	}
+	
+	this.getAbstractLabels = function() {
+		return this.abstract_line.generateLabels(this);
+	}
+	
 	this.getIntersectPosition = function() {
 		return this.intersect / this.range;
+	}
+	
+	this.setAbstractLine = function(abstract_line) {
+		this.abstract_line = abstract_line;
+	}
+
+	this.draw = function(canvas) {
+		// Axes
+		canvas.drawProjectLine(this.abstract_line).setAttribute("class", "axis");
+
+		var transform = this.abstract_line.getLineTransformationFactors();
+
+		var label_elements = canvas.drawLabels(this);
+		
+		console.log ("Theta: " + transform.theta + " PI/2: " + Math.PI/2);
+		
+		// TODO : Make better transformation for non-vertical/non-horizontal axes
+		if (transform.theta > -Math.PI/2 && transform.theta < Math.PI/2) {
+			setAttributeToElements(label_elements, "class", "axis-legend axis-legend-horizontal");
+		}
+		else {
+			setAttributeToElements(label_elements, "class", "axis-legend axis-legend-vertical");
+		}
+
+		setAttributeToElements(canvas.drawTicks(this), "class", "axis-tick");
 	}
 }
 
@@ -144,6 +185,7 @@ function FreeGraphSeries(name, axes) {
 		this.axes.push(axes);
 	}
 
+	// Adapt the axis to our data
 	this.fitAxes = function() {
 		for (var i = 0; i < this.axes.length; i++) {
 			var axis = this.axes[i];
@@ -156,6 +198,7 @@ function FreeGraphSeries(name, axes) {
 		}
 	}
 
+	// Add a new point to the series, the number of points must match the number of axes
 	this.newPoint = function(axis_addresses_ints) {
 		if (axis_addresses_ints == undefined || axis_addresses_ints == null || !Array.isArray(axis_addresses_ints)) {
 			throw "Invalid non-array axis addresses argument given to FreeGraphSeries.newPoint(): " + axis_addresses_ints;
@@ -178,39 +221,32 @@ function FreeGraphSeries(name, axes) {
 	}
 }
 
-/*
- * x1, y1 = position relative to top left corner of canvas
- * x2, y2 = position relative to bottom right corner of canvas
- */
-function FreeGraphPlane(x1, y1, x2, y2) {
+function FreeGraphPlane(axes, canvas, x1, y1, x2, y2) {
 	this.x1 = x1;
 	this.y1 = y1;
 	this.x2 = x2;
 	this.y2 = y2;
+
+	this.axes = axes;
+	this.canvas = canvas;
 	
-	this.setAttributeToElements = function(elements, attribute, value) {
-		for (var i = 0; i < elements.length; i++) {
-			elements[i].setAttribute(attribute, value);
-		}
-	}
-	
-	this.drawAxes = function (canvas, axes) {
+	this.drawAxes = function () {
 		var horizontal_axis = null;
 		var vertical_axis = null;
 
-		for (var i = 0; i < axes.length; i++) {
-			var axis = axes[i];
+		for (var i = 0; i < this.axes.length; i++) {
+			var axis = this.axes[i];
 			if (axis.direction == "horizontal") {
 				if (horizontal_axis != null) {
 					throw "More than 1 horizontal axis defined for FreeGraphPlane.drawAxes()";
 				}
-				horizontal_axis = axes[i];
+				horizontal_axis = this.axes[i];
 			}
 			else if (axis.direction == "vertical") {
 				if (vertical_axis != null) {
 					throw "More than 1 vertical axis defined for FreeGraphPlane.drawAxes()";
 				}
-				vertical_axis = axes[i];
+				vertical_axis = this.axes[i];
 			}
 			else {
 				throw "Unknown axis direction '" + axis.direction + "' for FreeGraphPlane.drawAxes()";
@@ -221,22 +257,23 @@ function FreeGraphPlane(x1, y1, x2, y2) {
 		var vertical_intersect = vertical_axis.getIntersectPosition();
 		var horizontal_intersect = horizontal_axis.getIntersectPosition();
 
-		// Axes
 		console.log("Generate abstract lines");
-		var vertical_line = new FreeGraphAbstractProjectLine(this.x1, this.y2, 1, this.x1, this.y1, horizontal_intersect, 0, canvas.width, canvas.height);
-		var horizontal_line = new FreeGraphAbstractProjectLine(this.x1, this.y2, 0, this.x2, this.y2, 0, vertical_intersect, canvas.width, canvas.height);
 
-		canvas.drawProjectLine(vertical_line).setAttribute("class", "axis");
-		canvas.drawProjectLine(horizontal_line).setAttribute("class", "axis");
-		
-		console.log("Draw labels");
-		this.setAttributeToElements(canvas.drawLabels(vertical_line, vertical_axis), "class", "axis-legend axis-legend-vertical");
-		this.setAttributeToElements(canvas.drawLabels(horizontal_line, horizontal_axis), "class", "axis-legend axis-legend-horizontal");
+		var vertical_line = new FreeGraphAbstractProjectLine(
+				this.x1, this.y2, 1, this.x1, this.y1,
+				horizontal_intersect, 0, this.canvas.width, this.canvas.height
+		);
 
-		console.log("Draw label ticks");
-		this.setAttributeToElements(canvas.drawTicks(vertical_line, vertical_axis), "class", "axis-tick");
-		this.setAttributeToElements(canvas.drawTicks(horizontal_line, horizontal_axis), "class", "axis-tick");
+		var horizontal_line = new FreeGraphAbstractProjectLine(
+				this.x1, this.y2, 0, this.x2, this.y2,
+				0, vertical_intersect, this.canvas.width, this.canvas.height
+		);
+
+		vertical_axis.setAbstractLine(vertical_line);
+		horizontal_axis.setAbstractLine(horizontal_line);
 		
+		vertical_axis.draw(this.canvas);
+		horizontal_axis.draw(this.canvas);
 		
 		//points = spreadPointsOnLine();
 	}
@@ -274,10 +311,10 @@ function FreeGraphCanvas(parent, width, height) {
 		return element;
 	}
 	
-	this.drawTicks = function(line, count) {
+	this.drawTicks = function(axis) {
 		var ret = new Array();
 
-		var ticks = line.generateTicks(count);
+		var ticks = axis.getAbstractTicks();
 
 		for (var i = 0; i < ticks.length; i++) {
 			ret.push(this.drawLine(ticks[i]));
@@ -299,11 +336,13 @@ function FreeGraphCanvas(parent, width, height) {
 		return element;
 	}
 
-	this.drawLabels = function(line, labels, with_ticks) {
+	this.drawLabels = function(axis) {
+		var labels = axis.getLabels();
 		var labels_count = labels.length;
+	
 		var ret = new Array();
 
-		var labels = line.generateLabels(labels);
+		var labels = axis.getAbstractLabels();
 
 		for (var i = 0; i < labels.length; i++) {
 			ret.push(this.drawLabel(labels[i]));
@@ -341,7 +380,11 @@ function FreeGraphAbstractLabel(x, y, label) {
 	this.label = label;
 }
 
+/*
+ * A line with a start point and an angle with automatic length bounded by the canvas width and height
+ */
 function FreeGraphAbstractProjectLine(start_x, start_y, direction, margin_x, margin_y, factor_x, factor_y, canvas_width, canvas_height) {
+	// TODO : Support angles not just horizontal/vertical
 	if (direction != 0 && direction != 1) {
 		throw "direction to FreeGraphAbstractProjectLine must be 1 or 0, " + direction + " was given";
 	}
@@ -376,12 +419,13 @@ function FreeGraphAbstractProjectLine(start_x, start_y, direction, margin_x, mar
 		ret.interval = ret.distance_max / count;
 		ret.factor_x = this.distance_x / ret.distance_max;
 		ret.factor_y = this.distance_y / ret.distance_max;
+		ret.theta = Math.acos(this.distance_x / ret.distance_max);
 
 		return ret;
 	}
 
 	this.generateTicks = function(axis) {
-		var count = axis.getLabelsCount();
+		var count = axis.getLabelCount();
 		var transform = this.getLineTransformationFactors(count);
 		var origin = axis.getIntersectPosition() * transform.distance_max;
 	
@@ -389,8 +433,7 @@ function FreeGraphAbstractProjectLine(start_x, start_y, direction, margin_x, mar
 		var tick_length = 3;
 		
 		// Get angle of axis
-		var theta = Math.acos(this.distance_x / transform.distance_max);
-		console.log("Theta: " + theta);
+		var theta = transform.theta;
 		
 		// Rotate 90 degrees anti-clockwise
 		theta -= Math.PI / 2;
@@ -404,14 +447,14 @@ function FreeGraphAbstractProjectLine(start_x, start_y, direction, margin_x, mar
 
 		var tick_offset_x2 = tick_offset * Math.cos(theta); 
 		var tick_offset_y2 = tick_offset * Math.sin(theta); 
-
-		console.log("Tick offsets " + tick_offset_x1 + "x" + tick_offset_y1 + " - " + tick_offset_x2 + "x" + tick_offset_y2);
 		
 		var ret = new Array();
 		for (var i = 0.0; Math.round(i) < Math.round(transform.distance_max); i += transform.interval) {
+			// Don't create tick at axis intersection
 			if (Math.floor(i) == Math.floor(origin)) {
 				continue;
 			}
+
 			var distance_x = this.start_x + transform.factor_x * i;
 			var distance_y = this.start_y + transform.factor_y * i;
 			
@@ -442,7 +485,7 @@ function FreeGraphAbstractProjectLine(start_x, start_y, direction, margin_x, mar
 				continue;
 			}
 
-			console.log("New label i: " + i + " max: " + transform.distance_max);
+			//console.log("New label i: " + i + " max: " + transform.distance_max);
 			
 			var distance_x = this.start_x + transform.factor_x * i;
 			var distance_y = this.start_y + transform.factor_y * i;
@@ -458,16 +501,20 @@ function FreeGraphAbstractProjectLine(start_x, start_y, direction, margin_x, mar
 
 }
 
-function FreeGraphBase(parent, width, height) {
+function FreeGraphBase(parent, width, height, axes) {
 	this.parent = parent;
 	this.axes = new Array();
-	
+
+	for (var i = 0; i < axes.length; i++) {
+		this.axes.push(axes[i]);
+	}
+
 	this.canvas = new FreeGraphCanvas(parent, width, height);
 	this.parent.appendChild(this.canvas.getElement());
 
 	this.series = new Array();
-	this.plane = new FreeGraphPlane(20, 20, 20, 20);
-	
+	this.plane = new FreeGraphPlane(this.axes, this.canvas, 20, 20, 20, 20);
+
 	this.newSeries = function (name) {
 		var series = new FreeGraphSeries(name, this.axes);
 		this.series.push(series);
@@ -477,17 +524,15 @@ function FreeGraphBase(parent, width, height) {
 	this.update = function() {
 		for (var i = 0; i < this.series.length; i++) {
 			var series = this.series[i];
+			// TODO : Should we sort the data?
 			series.fitAxes();
 		}
-		this.plane.drawAxes(this.canvas, this.axes);
+		this.plane.drawAxes();
 	}
 }
 
 function newLineChart(canvas, width, height) {
-	var obj = new FreeGraphBase(canvas, width, height);
-
-	obj.axes.push(new FreeGraphAxis("X", "horizontal"));
-	obj.axes.push(new FreeGraphAxis("Y", "vertical"));
+	var obj = new FreeGraphBase(canvas, width, height, [new FreeGraphAxis("X", "horizontal"), new FreeGraphAxis("Y", "vertical")]);
 
 	return obj;
 }
