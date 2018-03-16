@@ -24,7 +24,7 @@ function setAttributeToElements (elements, attribute, value) {
 		elements[i].setAttribute(attribute, value);
 	}
 }
-	
+
 function FreeGraphAxis(name, direction) {
 	this.name = name;
 	this.ticks = 10;
@@ -37,7 +37,7 @@ function FreeGraphAxis(name, direction) {
 	this.labels_count = undefined;
 
 	this.abstract_line = undefined;
-	
+
 	if (direction == undefined) {
 		throw "direction argument not given to FreeGraphAxis constructor";
 	}
@@ -46,7 +46,7 @@ function FreeGraphAxis(name, direction) {
 	}
 
 	this.direction = direction;
-	
+
 	this.reset = function() {
 		this.min_address = null;
 		this.max_address = null;
@@ -67,7 +67,7 @@ function FreeGraphAxis(name, direction) {
 				this.max_address = addresses[i];
 			}
 		}
-		
+
 		this.range = this.max_address.getInteger() - this.min_address.getInteger();
 		this.ticks_spacing = this.range / this.ticks;
 		this.intersect = (this.min_address.getInteger() < 0 ? -this.min_address.getInteger() : 0);
@@ -81,7 +81,7 @@ function FreeGraphAxis(name, direction) {
 		}
 		return this.labels_count;
 	}
-	
+
 	this.getLabels = function() {
 		var ret = Array();
 		// TODO : Transformation to other value text types
@@ -92,24 +92,24 @@ function FreeGraphAxis(name, direction) {
 		for (var i = this.min_address.getInteger(); i < this.max_address.getInteger(); i += ticks_spacing) {
 			ret.push("" + i);
 		}
-		
+
 		this.labels_count = ret.length;
-		
+
 		return ret;
 	}
 
 	this.getAbstractTicks = function() {
 		return this.abstract_line.generateTicks(this);
 	}
-	
+
 	this.getAbstractLabels = function() {
 		return this.abstract_line.generateLabels(this);
 	}
-	
+
 	this.getIntersectPosition = function() {
 		return this.intersect / this.range;
 	}
-	
+
 	this.setAbstractLine = function(abstract_line) {
 		this.abstract_line = abstract_line;
 	}
@@ -121,9 +121,9 @@ function FreeGraphAxis(name, direction) {
 		var transform = this.abstract_line.getLineTransformationFactors();
 
 		var label_elements = canvas.drawLabels(this);
-		
+
 		console.log ("Theta: " + transform.theta + " PI/2: " + Math.PI/2);
-		
+
 		// TODO : Make better transformation for non-vertical/non-horizontal axes
 		if (transform.theta > -Math.PI/2 && transform.theta < Math.PI/2) {
 			setAttributeToElements(label_elements, "class", "axis-legend axis-legend-horizontal");
@@ -147,7 +147,7 @@ function FreeGraphPointAddress(value, cmp_function) {
 	else {
 		this.cmp = cmp_function;
 	}
-	
+
 	this.getInteger = function() {
 		return 0 + this.value;
 	}
@@ -162,7 +162,7 @@ function FreeGraphPoint(addresses) {
 	else {
 		this.addresses.push(addresses);
 	}
-	
+
 	this.getAddress = function(index) {
 		return addresses[index];
 	}
@@ -229,7 +229,7 @@ function FreeGraphPlane(axes, canvas, x1, y1, x2, y2) {
 
 	this.axes = axes;
 	this.canvas = canvas;
-	
+
 	this.draw = function (series) {
 		var horizontal_axis = null;
 		var vertical_axis = null;
@@ -277,10 +277,10 @@ function FreeGraphPlane(axes, canvas, x1, y1, x2, y2) {
 
 		vertical_axis.setAbstractLine(vertical_line);
 		horizontal_axis.setAbstractLine(horizontal_line);
-		
+
 		vertical_axis.draw(this.canvas);
 		horizontal_axis.draw(this.canvas);
-		
+
 		//points = spreadPointsOnLine();
 	}
 }
@@ -293,7 +293,7 @@ function FreeGraphCanvas(width, height) {
 	this.element.setAttribute("width", width);
 	this.element.setAttribute("height", height);
 	this.element.setAttributeNS("http://www.w3.org/2000/xmlns/", "xmlns:xlink", "http://www.w3.org/1999/xlink");
-	
+
 	// TODO : check real size of SVG
 	this.width = width;
 	this.height = height;
@@ -303,7 +303,7 @@ function FreeGraphCanvas(width, height) {
 			this.element.removeChild(this.element.childNodes[0]);
 		}
 	}
-	
+
 	this.getElement = function() {
 		return this.element;
 	}
@@ -316,12 +316,12 @@ function FreeGraphCanvas(width, height) {
 		element.setAttribute('y1', this.height - line.y1);
 		element.setAttribute('x2', line.x2);
 		element.setAttribute('y2', this.height - line.y2);
-		
+
 		this.element.appendChild(element);
-		
+
 		return element;
 	}
-	
+
 	this.drawTicks = function(axis) {
 		var ret = new Array();
 
@@ -333,7 +333,7 @@ function FreeGraphCanvas(width, height) {
 
 		return ret;
 	}
-	
+
 	this.drawLabel = function(label) {
 		var element = document.createElementNS('http://www.w3.org/2000/svg','text');
 
@@ -341,16 +341,16 @@ function FreeGraphCanvas(width, height) {
 		element.setAttribute("x", label.x);
 		element.setAttribute("y", this.height - label.y);
 		element.innerHTML = label.label;
-		
+
 		this.element.appendChild(element);
-		
+
 		return element;
 	}
 
 	this.drawLabels = function(axis) {
 		var labels = axis.getLabels();
 		var labels_count = labels.length;
-	
+
 		var ret = new Array();
 
 		var labels = axis.getAbstractLabels();
@@ -358,10 +358,10 @@ function FreeGraphCanvas(width, height) {
 		for (var i = 0; i < labels.length; i++) {
 			ret.push(this.drawLabel(labels[i]));
 		}
-		
+
 		return ret;
 	}
-	
+
 	this.drawProjectLine = function(line) {
 		var element = document.createElementNS('http://www.w3.org/2000/svg','line');
 
@@ -375,7 +375,6 @@ function FreeGraphCanvas(width, height) {
 
 		return element;
 	}
-
 }
 
 function FreeGraphAbstractLine(x1, y1, x2, y2) {
@@ -408,10 +407,10 @@ function FreeGraphAbstractProjectLine(start_x, start_y, direction, margin_x, mar
 
 	start_x += offset_x;
 	start_y += offset_y;
-	
+
 	var stop_y = (direction == 1 ? max_y : start_y);
 	var stop_x = (direction == 0 ? max_x : start_x);
-	
+
 	this.start_x = start_x;
 	this.start_y = start_y;
 	this.stop_x = stop_x;
@@ -439,26 +438,26 @@ function FreeGraphAbstractProjectLine(start_x, start_y, direction, margin_x, mar
 		var count = axis.getLabelCount();
 		var transform = this.getLineTransformationFactors(count);
 		var origin = axis.getIntersectPosition() * transform.distance_max;
-	
+
 		// Length on one side of the axis
 		var tick_length = 3;
-		
+
 		// Get angle of axis
 		var theta = transform.theta;
-		
+
 		// Rotate 90 degrees anti-clockwise
 		theta -= Math.PI / 2;
-		
+
 		var tick_offset = 3;
 		var tick_offset_x1 = tick_offset * Math.cos(theta); 
 		var tick_offset_y1 = tick_offset * Math.sin(theta); 
-		
+
 		// Rotate 180 degrees anti-clockwise
 		theta -= Math.PI;
 
 		var tick_offset_x2 = tick_offset * Math.cos(theta); 
 		var tick_offset_y2 = tick_offset * Math.sin(theta); 
-		
+
 		var ret = new Array();
 		for (var i = 0.0; Math.round(i) < Math.round(transform.distance_max); i += transform.interval) {
 			// Don't create tick at axis intersection
@@ -468,16 +467,16 @@ function FreeGraphAbstractProjectLine(start_x, start_y, direction, margin_x, mar
 
 			var distance_x = this.start_x + transform.factor_x * i;
 			var distance_y = this.start_y + transform.factor_y * i;
-			
+
 			var x1 = distance_x + tick_offset_x1;
 			var y1 = distance_y + tick_offset_y1;
-			
+
 			var x2 = distance_x + tick_offset_x2;
 			var y2 = distance_y + tick_offset_y2;
-			
+
 			ret.push(new FreeGraphAbstractLine(x1, y1, x2, y2));
 		}
-		
+
 		return ret;
 	}
 
@@ -486,7 +485,7 @@ function FreeGraphAbstractProjectLine(start_x, start_y, direction, margin_x, mar
 
 		var transform = this.getLineTransformationFactors(labels.length);
 		var origin = axis.getIntersectPosition() * transform.distance_max;
-		
+
 		var ret = new Array();
 		var j = 0;
 		for (var i = 0.0; Math.round(i) < Math.round(transform.distance_max); i += transform.interval) {
@@ -497,7 +496,7 @@ function FreeGraphAbstractProjectLine(start_x, start_y, direction, margin_x, mar
 			}
 
 			//console.log("New label i: " + i + " max: " + transform.distance_max);
-			
+
 			var distance_x = this.start_x + transform.factor_x * i;
 			var distance_y = this.start_y + transform.factor_y * i;
 
