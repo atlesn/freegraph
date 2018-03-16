@@ -19,7 +19,7 @@
 
 var grapher = newLineChart(document.getElementById("linechart-canvas"), 800, 600);
 
-var blue_series = grapher.newSeries("Blue Line");
+var blue_series = grapher.newSeries("Blue Line", "series1");
 
 blue_series.newPoint([-4,-5]);
 blue_series.newPoint([-3,-4]);
@@ -30,6 +30,15 @@ blue_series.newPoint([2,-3]);
 blue_series.newPoint([3, 4]);
 blue_series.newPoint([4, 1]);
 blue_series.newPoint([5, 3]);
+
+var blue_series = grapher.newSeries("Red Line", "series2");
+
+blue_series.newPoint([0,6]);
+blue_series.newPoint([1,-2]);
+blue_series.newPoint([2,-7]);
+blue_series.newPoint([3,-3]);
+blue_series.newPoint([4,-5]);
+blue_series.newPoint([5,-2]);
 
 grapher.update();
 

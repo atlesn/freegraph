@@ -34,14 +34,17 @@ svg text.axis-legend-horizontal {
 	text-anchor: middle;
 }
 
-svg line.series1 {
-	stroke: blue
+svg .series1 {
+	stroke: rgba(0,0,255,0.8);
+	fill: rgba(0,0,255,0.8);
 }
 
-svg line.series2 {
-	stroke: red;
+svg .series2 {
+	stroke: rgba(255,0,0,0.8);
+	fill: rgba(255,0,0,0.8);
 }
 
-svg line.series3 {
+svg .series3 {
 	stroke: green;
+	fill: green;
 }

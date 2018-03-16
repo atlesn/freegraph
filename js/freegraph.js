@@ -208,8 +208,9 @@ function FreeGraphPoint(addresses) {
 	}
 }
 
-function FreeGraphSeries(name, axes) {
+function FreeGraphSeries(name, axes, classname) {
 	this.name = name;
+	this.classname = classname;
 	this.points = new Array();
 	this.axes = new Array();
 
@@ -236,7 +237,6 @@ function FreeGraphSeries(name, axes) {
 			for (var j = 0; j < this.points.length; j++) {
 				addresses.push(this.points[j].getAddress(i));
 			}
-			axis.reset();
 			axis.fitAddresses(addresses);
 		}
 	}
@@ -291,7 +291,7 @@ function FreeGraphSeries(name, axes) {
 			points.push(new FreeGraphAbstractLabel(x, y, point.getLabel()));
 		}
 		
-		canvas.drawPoints(points);
+		setAttributeToElements(canvas.drawPoints(points), "class", this.classname);
 	}
 
 	// Add a new point to the series, the number of points must match the number of axes
@@ -380,7 +380,7 @@ function FreeGraphPlane(axes, canvas, x1, y1, x2, y2) {
 		// The series should already contain their axes which they get relative
 		// position formation from
 		for (var i = 0; i < series.length; i++) {
-			console.log("Drawing series " + i);
+			console.log ("Drawing series " + i);
 			series[i].draw (canvas);
 		}
 	}
@@ -469,7 +469,7 @@ function FreeGraphCanvas(width, height) {
 		// Reverse Y to fit reverse canvas coordinates
 		element.setAttribute("cx", label.x);
 		element.setAttribute("cy", this.height - label.y);
-		element.setAttribute("r", 4);
+		element.setAttribute("r", 2);
 
 		element.innerHTML = "<!-- " + label.label + " -->";
 		
@@ -489,8 +489,7 @@ function FreeGraphCanvas(width, height) {
 
 			if (prev_label != null) {
 				var line = new FreeGraphAbstractLine(prev_label.x, prev_label.y, labels[i].x, labels[i].y);
-				this.drawLine(line);
-				ret.push(line);
+				ret.push(this.drawLine(line));
 			}
 			
 			prev_label = labels[i];
@@ -680,13 +679,16 @@ function FreeGraphBase(parent, width, height, axes) {
 	this.series = new Array();
 	this.plane = new FreeGraphPlane(this.axes, this.canvas, 20, 20, 20, 20);
 
-	this.newSeries = function (name) {
-		var series = new FreeGraphSeries(name, this.axes);
+	this.newSeries = function (name, classname) {
+		var series = new FreeGraphSeries(name, this.axes, classname);
 		this.series.push(series);
 		return series;
 	}
 
 	this.update = function() {
+		for (var i = 0; i < this.axes.length; i++) {
+			this.axes[i].reset();
+		}
 		this.canvas.clear();
 		this.plane.draw(this.series);
 	}
