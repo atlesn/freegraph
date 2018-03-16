@@ -25,12 +25,12 @@ svg line.axis-tick {
 }
 
 svg text.axis-legend-vertical {
-	transform: translate(-12px, -4px);
+	transform: translate(-8px, 4px);
 	text-anchor: end;
 }
 
 svg text.axis-legend-horizontal {
-	transform: translate(6px, 20px);
+	transform: translate(0px, 16px);
 	text-anchor: middle;
 }
 

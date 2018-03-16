@@ -28,7 +28,8 @@ function FreeGraphAxis(name, direction) {
 	this.range = undefined;
 	this.intersect = undefined;
 	this.ticks_spacing = undefined;
-
+	this.labels_count = undefined;
+	
 	if (direction == undefined) {
 		throw "direction argument not given to FreeGraphAxis constructor";
 	}
@@ -66,6 +67,13 @@ function FreeGraphAxis(name, direction) {
 //		alert ("Min/max value for axis " + this.name + " is " + this.min_address.getInteger() + "/" + this.max_address.getInteger());
 	}
 
+	this.getLabelsCount = function() {
+		if (this.labels_count == undefined) {
+			throw "getLabels() must be called prior to getLabelsCount()";
+		}
+		return this.labels_count;
+	}
+	
 	this.getLabels = function() {
 		var ret = Array();
 		// TODO : Transformation to other value text types
@@ -76,6 +84,9 @@ function FreeGraphAxis(name, direction) {
 		for (var i = this.min_address.getInteger(); i < this.max_address.getInteger(); i += ticks_spacing) {
 			ret.push("" + i);
 		}
+		
+		this.labels_count = ret.length;
+		
 		return ret;
 	}
 
@@ -219,12 +230,12 @@ function FreeGraphPlane(x1, y1, x2, y2) {
 		canvas.drawProjectLine(horizontal_line).setAttribute("class", "axis");
 		
 		console.log("Draw labels");
-		this.setAttributeToElements(canvas.drawLabels(vertical_line, vertical_axis.getLabels()), "class", "axis-legend axis-legend-vertical");
-		this.setAttributeToElements(canvas.drawLabels(horizontal_line, horizontal_axis.getLabels()), "class", "axis-legend axis-legend-horizontal");
+		this.setAttributeToElements(canvas.drawLabels(vertical_line, vertical_axis), "class", "axis-legend axis-legend-vertical");
+		this.setAttributeToElements(canvas.drawLabels(horizontal_line, horizontal_axis), "class", "axis-legend axis-legend-horizontal");
 
 		console.log("Draw label ticks");
-		this.setAttributeToElements(canvas.drawTicks(vertical_line, vertical_axis.getLabels().length), "class", "axis-tick");
-		this.setAttributeToElements(canvas.drawTicks(horizontal_line, horizontal_axis.getLabels().length), "class", "axis-tick");
+		this.setAttributeToElements(canvas.drawTicks(vertical_line, vertical_axis), "class", "axis-tick");
+		this.setAttributeToElements(canvas.drawTicks(horizontal_line, horizontal_axis), "class", "axis-tick");
 		
 		
 		//points = spreadPointsOnLine();
@@ -355,27 +366,40 @@ function FreeGraphAbstractProjectLine(start_x, start_y, direction, margin_x, mar
 	this.distance_x = stop_x - start_x;
 	this.distance_y = stop_y - start_y;
 
-	this.generateTicks = function(count) {
-		var distance_max = Math.sqrt(Math.pow(this.distance_x, 2) + Math.pow(this.distance_y, 2));
-		var interval = distance_max / count;
-		var factor_x = this.distance_x / distance_max;
-		var factor_y = this.distance_y / distance_max;
+	// Calculate transformation factors for transforming the large triangle
+	// with the line as hyp to the congruent smaller triangels with hyp distances
+	// equal to a point along the line
+	this.getLineTransformationFactors = function(count) {
+		var ret = {};
 
+		ret.distance_max = Math.sqrt(Math.pow(this.distance_x, 2) + Math.pow(this.distance_y, 2));
+		ret.interval = ret.distance_max / count;
+		ret.factor_x = this.distance_x / ret.distance_max;
+		ret.factor_y = this.distance_y / ret.distance_max;
+
+		return ret;
+	}
+
+	this.generateTicks = function(axis) {
+		var count = axis.getLabelsCount();
+		var transform = this.getLineTransformationFactors(count);
+		var origin = axis.getIntersectPosition() * transform.distance_max;
+	
 		// Length on one side of the axis
 		var tick_length = 3;
 		
 		// Get angle of axis
-		var theta = Math.acos(this.distance_x / distance_max);
+		var theta = Math.acos(this.distance_x / transform.distance_max);
 		console.log("Theta: " + theta);
 		
-		// Turn angle 90 degrees anti-clockwise
+		// Rotate 90 degrees anti-clockwise
 		theta -= Math.PI / 2;
 		
 		var tick_offset = 3;
 		var tick_offset_x1 = tick_offset * Math.cos(theta); 
 		var tick_offset_y1 = tick_offset * Math.sin(theta); 
 		
-		// Turn angle 180 degrees anti-clockwise
+		// Rotate 180 degrees anti-clockwise
 		theta -= Math.PI;
 
 		var tick_offset_x2 = tick_offset * Math.cos(theta); 
@@ -384,9 +408,12 @@ function FreeGraphAbstractProjectLine(start_x, start_y, direction, margin_x, mar
 		console.log("Tick offsets " + tick_offset_x1 + "x" + tick_offset_y1 + " - " + tick_offset_x2 + "x" + tick_offset_y2);
 		
 		var ret = new Array();
-		for (var i = 0.0; i < distance_max; i += interval) {
-			var distance_x = this.start_x + factor_x * i;
-			var distance_y = this.start_y + factor_y * i;
+		for (var i = 0.0; Math.round(i) < Math.round(transform.distance_max); i += transform.interval) {
+			if (Math.floor(i) == Math.floor(origin)) {
+				continue;
+			}
+			var distance_x = this.start_x + transform.factor_x * i;
+			var distance_y = this.start_y + transform.factor_y * i;
 			
 			var x1 = distance_x + tick_offset_x1;
 			var y1 = distance_y + tick_offset_y1;
@@ -394,25 +421,31 @@ function FreeGraphAbstractProjectLine(start_x, start_y, direction, margin_x, mar
 			var x2 = distance_x + tick_offset_x2;
 			var y2 = distance_y + tick_offset_y2;
 			
-			console.log("New tick " + x1 + "x" + y1 + " - " + x2 + "x" + y2);
-			
 			ret.push(new FreeGraphAbstractLine(x1, y1, x2, y2));
 		}
 		
 		return ret;
 	}
 
-	this.generateLabels = function(labels) {
-		var distance_max = Math.sqrt(Math.pow(this.distance_x, 2) + Math.pow(this.distance_y, 2));
-		var interval = distance_max / labels.length;
-		var factor_x = this.distance_x / distance_max;
-		var factor_y = this.distance_y / distance_max;
+	this.generateLabels = function(axis) {
+		var labels = axis.getLabels();
 
+		var transform = this.getLineTransformationFactors(labels.length);
+		var origin = axis.getIntersectPosition() * transform.distance_max;
+		
 		var ret = new Array();
 		var j = 0;
-		for (var i = 0.0; i < distance_max; i += interval) {
-			var distance_x = this.start_x + factor_x * i;
-			var distance_y = this.start_y + factor_y * i;
+		for (var i = 0.0; Math.round(i) < Math.round(transform.distance_max); i += transform.interval) {
+			// Don't print label at axis intersection
+			if (Math.floor(i) == Math.floor(origin)) {
+				j++;
+				continue;
+			}
+
+			console.log("New label i: " + i + " max: " + transform.distance_max);
+			
+			var distance_x = this.start_x + transform.factor_x * i;
+			var distance_y = this.start_y + transform.factor_y * i;
 
 			ret.push(new FreeGraphAbstractLabel(distance_x, distance_y, labels[j++]));
 		}
