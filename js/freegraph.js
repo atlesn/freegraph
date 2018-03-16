@@ -81,9 +81,17 @@ function FreeGraphAxis(name, direction) {
 
 		this.range = this.max_address.getInteger() - this.min_address.getInteger();
 		this.ticks_spacing = this.range / this.ticks;
-		this.intersect = (this.min_address.getInteger() < 0 ? -this.min_address.getInteger() : 0);
+		this.intersect = (
+			this.max_address.getInteger() < 0 ?
+			-this.min_address.getInteger() - -this.max_address.getInteger() :
+			(
+				this.min_address.getInteger() < 0 ?
+				-this.min_address.getInteger() :
+				0
+			)
+		);
 
-//		alert ("Min/max value for axis " + this.name + " is " + this.min_address.getInteger() + "/" + this.max_address.getInteger());
+		console.log ("Min/max value for axis " + this.name + " is " + this.min_address.getInteger() + "/" + this.max_address.getInteger() + " intersect: " + this.intersect);
 	}
 
 	this.getLabelCount = function() {
@@ -104,6 +112,9 @@ function FreeGraphAxis(name, direction) {
 			ret.push("" + i);
 		}
 
+		// Add label at the end
+		ret.push("" + this.max_address.getInteger());
+		
 		this.labels_count = ret.length;
 
 		return ret;
@@ -532,12 +543,14 @@ function FreeGraphAbstractProjectLine(start_x, start_y, direction, margin_x, mar
 		throw "direction to FreeGraphAbstractProjectLine must be 1 or 0, " + direction + " was given";
 	}
 	
+	
 	var max_x = canvas_width - margin_x;
 	var max_y = canvas_height - margin_y;
 
 	var offset_x = Math.floor((max_x - start_x) * factor_x);
 	var offset_y = Math.floor((max_y - start_y) * factor_y);
 
+	console.log ("start x: " + start_x + " start_y: " + start_y + "offset_x:" + offset_x + "offset_y: " + offset_y);
 	start_x += offset_x;
 	start_y += offset_y;
 
@@ -577,7 +590,7 @@ function FreeGraphAbstractProjectLine(start_x, start_y, direction, margin_x, mar
 	}
 	
 	this.generateTicks = function(axis) {
-		var count = axis.getLabelCount();
+		var count = axis.getLabelCount() - 1; // The last tick is at the very end, subtract 1
 		var transform = this.getLineTransformationFactors(count);
 		var origin = axis.getIntersectPosition() * transform.distance_max;
 
@@ -601,7 +614,7 @@ function FreeGraphAbstractProjectLine(start_x, start_y, direction, margin_x, mar
 		var tick_offset_y2 = tick_offset * Math.sin(theta); 
 
 		var ret = new Array();
-		for (var i = 0.0; Math.round(i) < Math.round(transform.distance_max); i += transform.interval) {
+		for (var i = 0.0; Math.round(i) <= Math.round(transform.distance_max); i += transform.interval) {
 			// Don't create tick at axis intersection
 			if (Math.floor(i) == Math.floor(origin)) {
 				continue;
@@ -625,12 +638,12 @@ function FreeGraphAbstractProjectLine(start_x, start_y, direction, margin_x, mar
 	this.generateLabels = function(axis) {
 		var labels = axis.getLabels();
 
-		var transform = this.getLineTransformationFactors(labels.length);
+		var transform = this.getLineTransformationFactors(labels.length - 1);
 		var origin = axis.getIntersectPosition() * transform.distance_max;
 
 		var ret = new Array();
 		var j = 0;
-		for (var i = 0.0; Math.round(i) < Math.round(transform.distance_max); i += transform.interval) {
+		for (var i = 0.0; Math.round(i) <= Math.round(transform.distance_max); i += transform.interval) {
 			// Don't print label at axis intersection
 			if (Math.floor(i) == Math.floor(origin)) {
 				j++;
